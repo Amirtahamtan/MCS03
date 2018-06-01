@@ -8,7 +8,9 @@ char indexBR=0;
 char Responsing=0;
 char cmdIsReady=0;
 char h;
+
 // SPIF initialization
+// Raspberry Communication port
 void spif_init(void)
 {
 // SPIF is enabled

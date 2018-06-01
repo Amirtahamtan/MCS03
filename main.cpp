@@ -1,82 +1,48 @@
-/*
- * MCS03.cpp
- *
- * Created: 5/31/2018 5:33:21 PM
- * Author : Amir
- */ 
+#define F_CPU 32000000UL
 
 #include <avr/io.h>
 #include <string.h>
 #include <stdio.h>
+#include <util/delay.h>
+
 #include "ports.h"
 #include "define.h"
 #include "CommandGet.h"
 #include "SFlash.h"
 #include "CMDExecution.h"
-#include <util/delay.h>
 
-char StopTime=0;
+char StopTime=0; //Counter to count stop down key time
 
-// System Clocks initialization
-void system_clocks_init(void)
+
+void system_clocks_init(void) // System Clocks initialization
 {
 	unsigned char n,s;
-
-	// Optimize for speed
 	#pragma optsize-
-	// Save interrupts enabled/disabled state
 	s=SREG;
-	// Disable interrupts
 	asm("cli");
-
-	// Internal 32 kHz RC oscillator initialization
-	// Enable the internal 32 kHz RC oscillator
 	OSC.CTRL|=OSC_RC32KEN_bm;
-	// Wait for the internal 32 kHz RC oscillator to stabilize
 	while ((OSC.STATUS & OSC_RC32KRDY_bm)==0);
-
-	// Internal 32 MHz RC oscillator initialization
-	// Enable the internal 32 MHz RC oscillator
 	OSC.CTRL|=OSC_RC32MEN_bm;
-
-	// System Clock prescaler A division factor: 1
-	// System Clock prescalers B & C division factors: B:1, C:1
-	// ClkPer4: 32000.000 kHz
-	// ClkPer2: 32000.000 kHz
-	// ClkPer:  32000.000 kHz
-	// ClkCPU:  32000.000 kHz
 	n=(CLK.PSCTRL & (~(CLK_PSADIV_gm | CLK_PSBCDIV1_bm | CLK_PSBCDIV0_bm))) |
 	CLK_PSADIV_1_gc | CLK_PSBCDIV_1_1_gc;
 	CCP=CCP_IOREG_gc;
 	CLK.PSCTRL=n;
-
-	// Internal 32 MHz RC osc. calibration reference clock source: 32.768 kHz Internal Osc.
 	OSC.DFLLCTRL&= ~(OSC_RC32MCREF_bm | OSC_RC2MCREF_bm);
-	// Enable the auto-calibration of the internal 32 MHz RC oscillator
 	DFLLRC32M.CTRL|=DFLL_ENABLE_bm;
-
-	// Wait for the internal 32 MHz RC oscillator to stabilize
 	while ((OSC.STATUS & OSC_RC32MRDY_bm)==0);
-
-	// Select the system clock source: 32 MHz Internal RC Osc.
 	n=(CLK.CTRL & (~CLK_SCLKSEL_gm)) | CLK_SCLKSEL_RC32M_gc;
 	CCP=CCP_IOREG_gc;
 	CLK.CTRL=n;
-
-	// Disable the unused oscillators: 2 MHz, external clock/crystal oscillator, PLL
 	OSC.CTRL&= ~(OSC_RC2MEN_bm | OSC_XOSCEN_bm | OSC_PLLEN_bm);
-
-	// ClkPer output disabled
 	PORTCFG.CLKEVOUT&= ~PORTCFG_CLKOUT_gm;
-	// Restore interrupts enabled/disabled state
 	SREG=s;
-	// Restore optimization for size if needed
 	#pragma optsize_default
 }
 
 // PORTH interrupt 0 service routine
-ISR (PORTH_INT0_vect)
-{
+// JOG Interrupt routine for positive direction 
+ISR (PORTH_INT0_vect)  
+{					   
 	if(JogPos)
 	{
 		printf("Jog+\r\n");
@@ -172,6 +138,7 @@ ISR (PORTH_INT0_vect)
 }
 
 // PORTH interrupt 0 service routine
+// Interrupt for Negative jog key 
 ISR (PORTD_INT0_vect)
 {
 	if(JogNeg)
@@ -262,11 +229,17 @@ ISR (PORTD_INT0_vect)
 	}
 }
 
+//Port D interrupt
+//Start Stop Key Interrupt
+
 ISR (PORTD_INT1_vect)
 {
 	//printf("PortD INT1\r\n");
 	if(RunProgram)
 	{
+		
+		//     because start is done in Raspberry then the part of code is disable here  
+		
 		//     //printf("Start Program...\r\n");
 		//     AxisMoving = AxisIsMoving1 || AxisIsMoving2 || AxisIsMoving3;
 		//     if (!ProgramRun)
@@ -369,15 +342,17 @@ ISR (PORTD_INT1_vect)
 				//DistanceToGo3=0;
 			}
 		}
-		
 	}
 }
+
+
 // USARTC0 initialization
+// USART PORT C  for testing and trace in debugging  putchar and getchar is working with this port
+
 void usartc0_init(void)
 {
 	// Note: The correct PORTC direction for the RxD, TxD and XCK signals
 	// is configured in the ports_init function.
-
 	// Transmitter is enabled
 	// Set TxD=1
 	PORTC.OUTSET=0x08;
@@ -407,7 +382,10 @@ void usartc0_init(void)
 	USART_RXEN_bm | USART_TXEN_bm;
 }
 
+
 // USARTC0 Receiver buffer
+// interrupt definition for receive of data in USARTC0 port C
+
 #define RX_BUFFER_SIZE_USARTC0 8
 char rx_buffer_usartc0[RX_BUFFER_SIZE_USARTC0];
 
@@ -427,6 +405,7 @@ unsigned int rx_counter_usartc0=0;
 bool rx_buffer_overflow_usartc0=0;
 
 // USARTC0 Receiver interrupt service routine
+// Debug port receive interrupt
 ISR (USARTC0_RXC_vect)
 {
 	unsigned char status;
@@ -451,43 +430,10 @@ ISR (USARTC0_RXC_vect)
 	}
 }
 
-// Receive a character from USARTC0
-// USARTC0 is used as the default input device by the 'getchar' function
-#define _ALTERNATE_GETCHAR_
-
-#pragma used+
-//char getchar(void)
-//{
-	//char data;
-//
-	//while (rx_counter_usartc0==0);
-	//data=rx_buffer_usartc0[rx_rd_index_usartc0++];
-	//#if RX_BUFFER_SIZE_USARTC0 != 256
-	//if (rx_rd_index_usartc0 == RX_BUFFER_SIZE_USARTC0) rx_rd_index_usartc0=0;
-	//#endif
-	//#asm("cli")
-	//--rx_counter_usartc0;
-	//#asm("sei")
-	//return data;
-//}
-#pragma used-
-
-// Write a character to the USARTC0 Transmitter
-// USARTC0 is used as the default output device by the 'putchar' function
-#define _ALTERNATE_PUTCHAR_
-
-#pragma used+
-//void putchar(char c)
-//{
-	//while ((USARTC0.STATUS & USART_DREIF_bm) == 0);
-	//USARTC0.DATA=c;
-//}
-#pragma used-
-
 int main(void)
 {
     // Declare your local variables here
-    unsigned char n;
+    unsigned char n; 
 
     // Interrupt system initialization
     // Optimize for speed
@@ -522,32 +468,28 @@ int main(void)
     // Globally enable interrupts
     asm("sei");
 
-    tcc0_init();
-    tcc1_init();
-    tcd1_init();
-    spie_init();
-    SG17_SET;
+    tcc0_init();  // Axis interpolation counter for level 0 
+    tcc1_init();  // Axis interpolation counter for level 1
+    tcd1_init();  // PLC interpolation timer
+    spie_init();  // SPI Flash initialization
+    SG17_SET;     // says to 7 segment board and says that Xmega is loaded 
     usartc0_init();
-    SETSFRST;
-    SETSFWP;
+    SETSFRST; //set Serial Flash Reset means Xmega is able to read from SPI Flash 
+    SETSFWP;  //set Serial Flash Write protect to allow raspberry to write on it
     _delay_ms(250);
     printf("Reading Config...\r\n");
-    ReadConfig();
+    ReadConfig();  // read configuration from Serail Flash 
 
     while (1)
     {
-	    
+		// ifjog is pushed the LED on the board turns on
 	    if(JogNeg) SETBIT(PORTR.OUT,0);
 	    if(JogNeg==0) CLRBIT(PORTR.OUT,0);
-	    
 	    if(JogPos) SETBIT(PORTR.OUT,1);
 	    if(JogPos==0) CLRBIT(PORTR.OUT,1);
 	    
-	    if(RefCmd==0)
-	    {
-		    //TODO : 
-	    }
-	    AxisMoving = AxisIsMoving1 || AxisIsMoving2 || AxisIsMoving3;
+	    AxisMoving = AxisIsMoving1 || AxisIsMoving2 || AxisIsMoving3; // is any axis is moving
+		
 	    if(ProgramRun && !AxisMoving)
 	    {
 		    if(IsPause==0)
@@ -555,7 +497,6 @@ int main(void)
 			    if(RunSubProgram)
 			    {
 				    printf("Read Sub Program.\r\n");
-				    
 				    ReadSubProgram(0);
 			    }
 			    else
@@ -565,7 +506,7 @@ int main(void)
 			    }
 			    printf("Program Block: %u\tMode: %u\r\n",CMDPRGlist.PRGLine,CMDPRGlist.Mode);
 			    
-				PORTR.OUTTGL=0x01; //TGLBIT(PORTR.OUT,0);
+				PORTR.OUTTGL=0x01; //program running will flash the LED 
 			    PRGExe();
 			    if(PRGEXEindex < PRGSize) PRGEXEindex++;
 		    }

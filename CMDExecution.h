@@ -1,9 +1,9 @@
 #include <stdlib.h> 
 #include <math.h>
-#include "timers.h"
 #include <avr/interrupt.h>
-#include <avr/delay.h>
+#include <util/delay.h>
 
+#include "timers.h"
 
 char ProgramRun;
 
@@ -74,11 +74,11 @@ char cmdTemp[21];
 char temp[21];
 char EchoON;
 
-char AxisMoving;
-char PRGIsFinished;
-int PRGEXEindex;
-int PRGSize;
-char RefCmd;
+char AxisMoving; //if any axis is moving
+char PRGIsFinished; //IS program finished 
+int PRGEXEindex; //index of execution command
+int PRGSize; //Size of program 
+char RefCmd; //if reference command is executed
 
 char PLimitIsActiveA1=0;
 char NLimitIsActiveA1=0;
@@ -90,12 +90,15 @@ char FreeJog=0;
 char SelectedAxis=1;
 
 unsigned int LastPLine;
-unsigned long int CurrentSerial;
-char SerialCh[10];
-char SerChIndex;
-char RunSubProgram;
+unsigned long int CurrentSerial; 
+char SerialCh[10];    // serial characters array
+char SerChIndex;     // index of characters in serial string 
+char RunSubProgram;  //means the sub program is running
 char IsPause=0;
+
 // Timer/Counter TCC0 Compare/Capture A interrupt service routine
+// timer to make pulses level 0
+
 ISR (TCC0_CCA_vect) 
 {          
     if (TCC0.INTFLAGS & TC0_CCAIF_bm) TCC0.INTFLAGS|=TC0_CCAIF_bm;   
@@ -158,6 +161,7 @@ ISR (TCC0_CCA_vect)
 }
 
 // Timer/Counter TCC1 Overflow/Underflow interrupt service routine
+// Timer to set speed according to acceleration and deceleration Level 1
 ISR (TCC1_OVF_vect)
 {
   float PER;
@@ -223,11 +227,12 @@ ISR (TCC1_OVF_vect)
 }
 
 // Timer/Counter TCD1 Overflow/Underflow interrupt service routine
+// PLC INterpolation in this time level 4
 ISR (TCD1_OVF_vect)
 { 
    if(Axes[0].HardwareLimitNegIsActive)
    {  
-       //printf("Hardware Limit Axis X is Active.(From PLC Timer routin)\r\n");  
+       //printf("Hardware Limit Axis X is Active.(From PLC Timer routine)\r\n");  
        //printf("LIM POS X: %u\r\n",LIM_NEG1);            
        if(!DIR1 && !LIM_NEG1)       
        {
@@ -339,6 +344,9 @@ ISR (TCD1_OVF_vect)
    } 
 }
 
+
+// run a single block the command will be in the CMDPRGList structure
+// the structure will load in Main program
 void PRGExe()
 {
  switch (CMDPRGlist.Mode) 
@@ -701,6 +709,7 @@ void PRGExe()
  }
 }
 
+// run command that comes from raspberry the command will be in cmdtemp
 void cmdExe()
 {
     if(strncmp(cmdTemp,"?0000",3)==0)         
@@ -871,9 +880,7 @@ void cmdExe()
            }
            break;
          }
-         
        }
-                                  
       }
     }      
     else if(strncmp(cmdTemp,"#02",3)==0)
@@ -1601,7 +1608,7 @@ void cmdExe()
         }     
       }
      }
-     } 
+    } 
     }
     else if(strncmp(cmdTemp,"#07",3)==0)
     {//STOP JOG

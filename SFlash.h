@@ -99,10 +99,10 @@ SPIE.INTCTRL=SPI_INTLVL_OFF_gc;
 // SPIE transmit/receive function in Master mode
 // c - data to be transmitted
 // Returns the received data
+
 #pragma used+
 unsigned char spie_master_tx_rx(unsigned char c)
 {
-
 // Transmit data in Master mode
 SPIE.DATA=c;
 // Wait for the data to be transmitted/received
@@ -164,28 +164,31 @@ void ReadConfig()
    char b[4];
    char ax; 
   
+   //How make FlashPge address 
+   // the flash page is : 0
+   //Data stat from start   
    fk = 0; 
    ft = fk << 1;
    fadd1 = ft & 0xff;
    fadd2 = (ft>>8)& 0xff; 
-   SETBIT(PORTE.OUT,4);
-   CLRBIT(PORTE.OUT,4);       
-
-   spie_master_tx_rx(0x03);
-   spie_master_tx_rx(fadd2);
-   spie_master_tx_rx(fadd1);
-   spie_master_tx_rx(0x00);   
    
+   SETSFCS;
+   CLRSFCS;      
+
+   spie_master_tx_rx(0x03);  //Read Continues opcode
+   spie_master_tx_rx(fadd2); //address
+   spie_master_tx_rx(fadd1); //address
+   spie_master_tx_rx(0x00);  //00  
+   
+   //Reading configuration data from flash just for 3 axis
    for(ax=0;ax<3;ax++)
    {
-        b[1]=spie_master_tx_rx(0x00);
-        b[0]=spie_master_tx_rx(0x00);
+        b[1]=spie_master_tx_rx(0x00); //push clock to read
+        b[0]=spie_master_tx_rx(0x00); //push clock to read
         Axes[ax].ID = btou(b);  
         
         Axes[ax].Name = spie_master_tx_rx(0x00);
-        
         Axes[ax].Type = spie_master_tx_rx(0x00); 
-        
         Axes[ax].ReversDir = spie_master_tx_rx(0x00); 
         
         b[3]=spie_master_tx_rx(0x00);
@@ -253,6 +256,7 @@ void ReadConfig()
    }  
 }
 
+//read one block of program from ram and save it into CMDPRGList
 void readRam(void)
 { 
 
@@ -267,8 +271,9 @@ void readRam(void)
    ft = fk << 1;
    fadd1 = ft & 0xff;
    fadd2 = (ft>>8)& 0xff; 
-   SETBIT(PORTE.OUT,4);
-   CLRBIT(PORTE.OUT,4);       
+   
+   SETSFCS;
+   CLRSFCS;      
 
    spie_master_tx_rx(0x03);
    spie_master_tx_rx(fadd2);
@@ -484,6 +489,8 @@ void readRam(void)
  }
 }
 
+//Read Serial Number from Flash this is just one serial number 
+// Serial Number is in page : 999
 unsigned long int ReadSerial()
 {  
    char b[4];
@@ -492,8 +499,8 @@ unsigned long int ReadSerial()
    ft = fk << 1;
    fadd1 = ft & 0xff;
    fadd2 = (ft>>8)& 0xff; 
-   SETBIT(PORTE.OUT,4);
-   CLRBIT(PORTE.OUT,4);       
+   SETSFCS;
+   CLRSFCS;      
 
    spie_master_tx_rx(0x03);
    spie_master_tx_rx(fadd2);
@@ -510,6 +517,9 @@ unsigned long int ReadSerial()
    
 }
 
+//Read sub program for each characters 
+// normally sub programs start from page 100 and it will contains just 10 sub program each sub program have
+// 10 pages 
 void ReadSubProgram(unsigned int StartPage)
 { 
  char b[4];
@@ -521,8 +531,8 @@ void ReadSubProgram(unsigned int StartPage)
    ft = fk << 1;
    fadd1 = ft & 0xff;
    fadd2 = (ft>>8)& 0xff; 
-   SETBIT(PORTE.OUT,4);
-   CLRBIT(PORTE.OUT,4);       
+   SETSFCS;
+   CLRSFCS;      
 
    spie_master_tx_rx(0x03);
    spie_master_tx_rx(fadd2);
@@ -720,6 +730,8 @@ void ReadSubProgram(unsigned int StartPage)
  }
 }
 
+// write serial number 
+// Page is : 999
 void WriteSerial(long int serial)
 {
  char ftemp1;
@@ -729,26 +741,26 @@ void WriteSerial(long int serial)
  fadd1 = ft & 0xff;
  fadd2 = (ft>>8)& 0xff; 
  
- SETBIT(PORTE.OUT,4);
- CLRBIT(PORTE.OUT,4);  
+ SETSFCS;
+ CLRSFCS; 
     
  spie_master_tx_rx(0x81);   //delette
  spie_master_tx_rx(fadd2);
  spie_master_tx_rx(fadd1);
  spie_master_tx_rx(0x00);
- SETBIT(PORTE.OUT,4);
+ SETSFCS;
  do
  {                       
-   CLRBIT(PORTE.OUT,4);   //active   
+   CLRSFCS;  //active   
    TGLBIT(PORTR.OUT,0);
    spie_master_tx_rx(0xD7);       //wait until busy
    ftemp1 = spie_master_tx_rx(0); 
    printf("status: %u\r\n",ftemp1);
-   SETBIT(PORTE.OUT,4);   
+   SETSFCS;  
  }
  while ((ftemp1 & 0x80)==0); 
  
- CLRBIT(PORTE.OUT,4);     //start writing  
+ CLRSFCS;    //start writing  
  TGLBIT(PORTR.OUT,1); 
  spie_master_tx_rx(0x84);   // first buffer
  spie_master_tx_rx(fadd2);
@@ -762,14 +774,12 @@ void WriteSerial(long int serial)
  spie_master_tx_rx(charTemp[2]);
  spie_master_tx_rx(charTemp[1]);
  spie_master_tx_rx(charTemp[0]); 
-    
-  
 
- SETBIT(PORTE.OUT,4);
+ SETSFCS;
  CLRBIT(PORTE.OUT,4);
  spie_master_tx_rx(0x83);    //write into page from buffer 1
  spie_master_tx_rx(fadd2);
  spie_master_tx_rx(fadd1);
  spie_master_tx_rx(0x00); 
- SETBIT(PORTE.OUT,4); 
+ SETSFCS; 
 }       
