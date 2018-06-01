@@ -10,7 +10,7 @@
 #define TSTBIT(x,y) 	(((x)>>(y)) & 1)
 #define TGLBIT(x,y)     (TSTBIT(x,y))?CLEARBITS(x,y):SETBIT(x,y)
 //Outputs
-#define DIR1         TSTBIT(PORTK.OUT,4)
+#define DIR1         TSTBIT(PORTK.OUT,4) //hello
 #define SET_DIR1     SETBIT(PORTK.OUT,4)
 #define CLR_DIR1     CLRBIT(PORTK.OUT,4)
 #define PULSE1       PORTK.OUTTGL = 0x20 //TGLBIT(PORTK.OUT,5)
