@@ -17,7 +17,7 @@ char StopTime=0; //Counter to count stop down key time
 void system_clocks_init(void) // System Clocks initialization
 {
 	unsigned char n,s;
-	#pragma optsize-
+	//#pragma optsize-
 	s=SREG;
 	asm("cli");
 	OSC.CTRL|=OSC_RC32KEN_bm;
@@ -36,7 +36,7 @@ void system_clocks_init(void) // System Clocks initialization
 	OSC.CTRL&= ~(OSC_RC2MEN_bm | OSC_XOSCEN_bm | OSC_PLLEN_bm);
 	PORTCFG.CLKEVOUT&= ~PORTCFG_CLKOUT_gm;
 	SREG=s;
-	#pragma optsize_default
+	//#pragma optsize_default
 }
 
 // PORTH interrupt 0 service routine
@@ -437,7 +437,7 @@ int main(void)
 
     // Interrupt system initialization
     // Optimize for speed
-    #pragma optsize-
+    //#pragma optsize-
     // Make sure the interrupts are disabled
     asm("cli");
     // Low level interrupt: On
@@ -451,8 +451,9 @@ int main(void)
     PMIC.CTRL=n;
     // Set the default priority for round-robin scheduling
     PMIC.INTPRI=0x00;
+	
     // Restore optimization for size if needed
-    #pragma optsize_default
+    //#pragma optsize_default
 
     // System clocks initialization
     system_clocks_init();

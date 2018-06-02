@@ -41,7 +41,7 @@ struct CMDPRGType
   unsigned long int SerialTo; 
   
   char FillWithZero;
-  char DigitNumber;
+  int DigitNumber;
   
 };
 struct CMDPRGType CMDPRGlist;
@@ -98,9 +98,9 @@ SPIE.INTCTRL=SPI_INTLVL_OFF_gc;
 
 // SPIE transmit/receive function in Master mode
 // c - data to be transmitted
-// Returns the received data
+// Returns the received dat
+//#pragma used+
 
-#pragma used+
 unsigned char spie_master_tx_rx(unsigned char c)
 {
 // Transmit data in Master mode
@@ -110,7 +110,7 @@ while ((SPIE.STATUS & SPI_IF_bm)==0);
 // Return the received data
 return SPIE.DATA;
 }
-#pragma used-
+//#pragma used-
 
 void ltob(long int li,char *chs)
 {
@@ -162,7 +162,7 @@ int btoi (char *chs)
 void ReadConfig()
 {
    char b[4];
-   char ax; 
+   int ax; 
   
    //How make FlashPge address 
    // the flash page is : 0
@@ -267,7 +267,7 @@ void readRam(void)
  {
    printf("Reading First block\r\n");
    fk = FPRGpage;    
-   printf("First Page Address: %u\r\n",fk);
+   printf("First Page Address: %ld\r\n",fk);
    ft = fk << 1;
    fadd1 = ft & 0xff;
    fadd2 = (ft>>8)& 0xff; 

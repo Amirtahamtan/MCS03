@@ -69,7 +69,7 @@ unsigned int Ma1,Ma2,Ma3;
 float TimerMainPeriod;
 
 int j;
-char k;
+int k;
 char cmdTemp[21];
 char temp[21];
 char EchoON;
@@ -92,8 +92,8 @@ char SelectedAxis=1;
 unsigned int LastPLine;
 unsigned long int CurrentSerial; 
 char SerialCh[10];    // serial characters array
-char SerChIndex;     // index of characters in serial string 
-char RunSubProgram;  //means the sub program is running
+int SerChIndex;       // index of characters in serial string 
+char RunSubProgram;   //means the sub program is running
 char IsPause=0;
 
 // Timer/Counter TCC0 Compare/Capture A interrupt service routine
@@ -637,9 +637,9 @@ void PRGExe()
             }    
             for(di=0;di<(CMDPRGlist.DigitNumber-digit);di++)
             {
-              SerialCh[di]='0';
+              SerialCh[di] = '0';
             } 
-            SerialCh[CMDPRGlist.DigitNumber]=0;
+            SerialCh[CMDPRGlist.DigitNumber] = '0';
           }
         }
         if(CMDPRGlist.SerialCountType == 0)
@@ -657,10 +657,10 @@ void PRGExe()
         _delay_ms(500);
         CurrentSerial=ReadSerial(); 
         _delay_ms(100);                     
-        printf("Current Serial is %d\r\n",CurrentSerial);
+        printf("Current Serial is %lu\r\n",CurrentSerial);
         ReadSubProgram(((SerialCh[SerChIndex]-48)*10)+100); 
         printf("Program Block: %u\tMode: %u\r\n",CMDPRGlist.PRGLine,CMDPRGlist.Mode); 
-        printf("Move1:%d\tMove2:%d\tMove3:%d\r\n",CMDPRGlist.Move1,CMDPRGlist.Move2,CMDPRGlist.Move3);
+        printf("Move1:%lu\tMove2:%lu\tMove3:%lu\r\n",CMDPRGlist.Move1,CMDPRGlist.Move2,CMDPRGlist.Move3);
         PRGExe(); 
         RunSubProgram=1;  
       } 
@@ -1901,17 +1901,17 @@ void cmdExe()
          {
             case '1': //Axis 1
             {
-              if(EchoON) printf("!1501\t%u",SetSpeed1);                      
+              if(EchoON) printf("!1501\t%lu",SetSpeed1);                      
               break; 
             }
             case '2': //Axis 2
             {
-              if(EchoON) printf("!1502\t%u",SetSpeed2);
+              if(EchoON) printf("!1502\t%lu",SetSpeed2);
               break; 
             }
             case '3': //Axis 3
             {
-              if(EchoON) printf("!1503\t%u",SetSpeed3);
+              if(EchoON) printf("!1503\t%lu",SetSpeed3);
               break; 
             }            
          }
@@ -2306,7 +2306,7 @@ void cmdExe()
         DistanceToGo1=labs(AxisPosition1-SetJog1);  
         DistanceToGo2=labs(AxisPosition2-SetJog2);        
         ACC=1; 
-        sprintf(BufferSend,"!30\tMaxS:%d\tIACC:%d\tIDEC:%d\n\rMa1:%d\tMa2:%d\tBACC:%d\tBDEC:%d\tMAXDTG:%d\n\r",MaxSpeed,IACC,IDEC,Ma1,Ma2,ACCSpeedINT,DECSpeedINT,MaxDistanceToGo); 
+        sprintf(BufferSend,"!30\tMaxS:%ld\tIACC:%ld\tIDEC:%ld\n\rMa1:%u\tMa2:%u\tBACC:%ld\tBDEC:%ld\tMAXDTG:%ld\n\r",MaxSpeed,IACC,IDEC,Ma1,Ma2,ACCSpeedINT,DECSpeedINT,MaxDistanceToGo); 
         Responsing=1;                     
         SetDataReady;
      }     
@@ -2367,7 +2367,7 @@ void cmdExe()
        readRam(); 
        readRam(); 
        readRam(); 
-       sprintf(BufferSend,"!9800\r\nPL:%u\tMD:%u\tMv1:%d\tMaxDTG:%d\tMaxSpeed:%d\tACCDTG:%d\r\n",CMDPRGlist.PRGLine,CMDPRGlist.Mode,CMDPRGlist.Move1,CMDPRGlist.MaxDistanceToGo,CMDPRGlist.MaxSpeed,CMDPRGlist.ACCDTG); 
+       sprintf(BufferSend,"!9800\r\nPL:%u\tMD:%u\tMv1:%ld\tMaxDTG:%ld\tMaxSpeed:%ld\tACCDTG:%ld\r\n",CMDPRGlist.PRGLine,CMDPRGlist.Mode,CMDPRGlist.Move1,CMDPRGlist.MaxDistanceToGo,CMDPRGlist.MaxSpeed,CMDPRGlist.ACCDTG); 
        //sprintf(BufferSend,"!9900\r\nID:%u\tMaxSpeed:%d\tACC:%d\r\n",Axes[0].ID,Axes[0].MaxSpeed,Axes[0].ACC);
        Responsing=1;
        SetDataReady;

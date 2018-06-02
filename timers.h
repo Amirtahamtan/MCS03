@@ -54,13 +54,13 @@ HIRESC.CTRLA&= ~HIRES_HREN0_bm;
 
 // Advanced Waveform Extension initialization
 // Optimize for speed
-#pragma optsize- 
+//#pragma optsize- 
 // Disable locking the AWEX configuration registers just to be sure
 n=MCU.AWEXLOCK & (~MCU_AWEXCLOCK_bm);
 CCP=CCP_IOREG_gc;
 MCU.AWEXLOCK=n;
 // Restore optimization for size if needed
-#pragma optsize_default
+//#pragma optsize_default
 
 // Pattern generation: Off
 // Common waveform channel mode: Off
