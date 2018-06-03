@@ -24,7 +24,7 @@
 #define DIR2         TSTBIT(PORTK.OUT,2)
 #define SET_DIR2     SETBIT(PORTK.OUT,2)
 #define CLR_DIR2     CLRBIT(PORTK.OUT,2)
-#define PULSE2       PORTK.OUTTGL=0x08   //TGLBIT(PORTK.OUT,3)
+#define PULSE2       PORTK.OUTTGL=0x08   
 #define EMG2         TSTBIT(PORTB.OUT,4)
 #define SET_EMG2     SETBIT(PORTB.OUT,4)
 #define CLR_EMG2     CLRBIT(PORTB.OUT,4)
@@ -35,7 +35,7 @@
 #define DIR3         TSTBIT(PORTK.OUT,0)
 #define SET_DIR3     SETBIT(PORTK.OUT,0)
 #define CLR_DIR3     CLRBIT(PORTK.OUT,0)
-#define PULSE3       PORTK.OUTTGL=0x02   //TGLBIT(PORTK.OUT,1)
+#define PULSE3       PORTK.OUTTGL=0x02   
 #define EMG3         TSTBIT(PORTC.OUT,3)
 #define SET_EMG3     SETBIT(PORTC.OUT,3)
 #define CLR_EMG3     CLRBIT(PORTC.OUT,3)
@@ -113,9 +113,9 @@
 #define LIM_NEG3     TSTBIT(PORTC.IN,4)
 #define REF3         TSTBIT(PORTC.IN,6)
 
-#define JogPos       TSTBIT(PORTH.IN,1) //Positive Jog Key 
-#define JogNeg       TSTBIT(PORTD.IN,3) //Negative Jog Key
+#define JogPosInput       TSTBIT(PORTH.IN,1) //Positive Jog Key 
+#define JogNegInput       TSTBIT(PORTD.IN,3) //Negative Jog Key
 
-#define RunProgram   TSTBIT(PORTD.IN,1) //Run Program Key
+#define RunProgramInput   TSTBIT(PORTD.IN,1) //Run Program Key
 
-#define StopProgram  TSTBIT(PORTD.IN,2) //Stop Program Key
+#define StopProgramInput  TSTBIT(PORTD.IN,2) //Stop Program Key

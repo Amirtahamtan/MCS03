@@ -5,8 +5,9 @@
 #include <stdio.h>
 #include <util/delay.h>
 
-#include "ports.h"
 #include "define.h"
+#include "AxisCommands.h"
+#include "ports.h"
 #include "CommandGet.h"
 #include "SFlash.h"
 #include "CMDExecution.h"
@@ -17,8 +18,7 @@ char StopTime=0; //Counter to count stop down key time
 void system_clocks_init(void) // System Clocks initialization
 {
 	unsigned char n,s;
-	//#pragma optsize-
-	s=SREG;
+	s = SREG;
 	asm("cli");
 	OSC.CTRL|=OSC_RC32KEN_bm;
 	while ((OSC.STATUS & OSC_RC32KRDY_bm)==0);
@@ -35,18 +35,17 @@ void system_clocks_init(void) // System Clocks initialization
 	CLK.CTRL=n;
 	OSC.CTRL&= ~(OSC_RC2MEN_bm | OSC_XOSCEN_bm | OSC_PLLEN_bm);
 	PORTCFG.CLKEVOUT&= ~PORTCFG_CLKOUT_gm;
-	SREG=s;
-	//#pragma optsize_default
+	SREG = s;
 }
 
 // PORTH interrupt 0 service routine
-// JOG Interrupt routine for positive direction 
-ISR (PORTH_INT0_vect)  
-{					   
-	if(JogPos)
+// JOG Interrupt routine for positive direction
+ISR (PORTH_INT0_vect)
+{
+	if(JogPosInput)
 	{
 		printf("Jog+\r\n");
-		if(!JogNeg)
+		if(!JogNegInput)
 		{
 			MaxSpeed=10000;
 			IACC=5000;
@@ -59,78 +58,27 @@ ISR (PORTH_INT0_vect)
 			
 			DECSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IDEC);// t = V/a
 			DECSpeedINT= MaxSpeed / DECSpeedINT;
-			switch(SelectedAxis)
-			{
-				case 1:
-				{
+
+			if(!LIM_POS1 && Axes[SelectedAxis].HardwareLimitPosIsActive)
+			MaxSpeed=Axes[SelectedAxis].MaxSpeed;
+			IACC=Axes[SelectedAxis].ACC;
+			IDEC=Axes[SelectedAxis].DEC;
 					
-					if(!LIM_POS1 && Axes[0].HardwareLimitPosIsActive)
-					break;
-					MaxSpeed=Axes[0].MaxSpeed;
-					IACC=Axes[0].ACC;
-					IDEC=Axes[0].DEC;
+			ACCSpeedINT =(long int)(100 *(float)MaxSpeed/(float)IACC);// t = V/a
+			ACCSpeedINT = MaxSpeed / ACCSpeedINT;
 					
-					ACCSpeedINT =(long int)(100 *(float)MaxSpeed/(float)IACC);// t = V/a
-					ACCSpeedINT = MaxSpeed / ACCSpeedINT;
+			DECSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IDEC);// t = V/a
+			DECSpeedINT= MaxSpeed / DECSpeedINT;
 					
-					DECSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IDEC);// t = V/a
-					DECSpeedINT= MaxSpeed / DECSpeedINT;
-					
-					SET_DIR1;
-					FreeJog=1;
-					Ma1=1000;
-					DistanceToGo1=0x7FFFFFFF;
-					break;
-					
-				}
-				case 2:
-				{
-					if(!LIM_POS2 && Axes[1].HardwareLimitPosIsActive)
-					break;
-					MaxSpeed=Axes[1].MaxSpeed;
-					IACC=Axes[1].ACC;
-					IDEC=Axes[1].DEC;
-					
-					ACCSpeedINT =(long int)(100 *(float)MaxSpeed/(float)IACC);// t = V/a
-					ACCSpeedINT = MaxSpeed / ACCSpeedINT;
-					
-					DECSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IDEC);// t = V/a
-					DECSpeedINT= MaxSpeed / DECSpeedINT;
-					
-					SET_DIR2;
-					FreeJog=2;
-					Ma2=1000;
-					DistanceToGo2=0x7FFFFFFF;
-					break;
-					
-				}
-				case 3:
-				{
-					if(!LIM_POS3 && Axes[2].HardwareLimitPosIsActive)
-					break;
-					MaxSpeed=Axes[2].MaxSpeed;
-					IACC=Axes[2].ACC;
-					IDEC=Axes[2].DEC;
-					
-					ACCSpeedINT =(long int)(100 *(float)MaxSpeed/(float)IACC);// t = V/a
-					ACCSpeedINT = MaxSpeed / ACCSpeedINT;
-					
-					DECSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IDEC);// t = V/a
-					DECSpeedINT= MaxSpeed / DECSpeedINT;
-					
-					SET_DIR3;
-					FreeJog=3;
-					Ma3=1000;
-					DistanceToGo3=0x7FFFFFFF;
-					break;
-					
-				}
-			}
+			SET_DIR1;
+			FreeJog=1;
+			Ma[SelectedAxis] = 1000;
+			DistanceToGo[SelectedAxis] = 0x7FFFFFFF;
 			
 			ACC=1;
 		}
 	}
-	else if((FreeJog==1 && DIR1)||(FreeJog==2 && DIR2)||(FreeJog==3 && DIR3))
+	else if((FreeJog == 1 && DIR1)||(FreeJog == 2 && DIR2)||(FreeJog == 3 && DIR3))
 	{
 		ACC=0;
 		DEC=1;
@@ -138,12 +86,12 @@ ISR (PORTH_INT0_vect)
 }
 
 // PORTH interrupt 0 service routine
-// Interrupt for Negative jog key 
+// Interrupt for Negative jog key
 ISR (PORTD_INT0_vect)
 {
-	if(JogNeg)
+	if(JogNegInput)
 	{
-		if(!JogPos)
+		if(!JogPosInput)
 		{
 			CurSpeedFrq=0;
 			TCC0.CCA=0xFFFF;
@@ -153,72 +101,23 @@ ISR (PORTD_INT0_vect)
 			
 			DECSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IDEC);// t = V/a
 			DECSpeedINT= MaxSpeed / DECSpeedINT;
-			switch(SelectedAxis)
-			{
-				case 1:
-				{
-					if(!LIM_NEG1 && Axes[0].HardwareLimitNegIsActive)
-					break;
-					MaxSpeed=Axes[0].MaxSpeed;
-					IACC=Axes[0].ACC;
-					IDEC=Axes[0].DEC;
+
+			if(!LIM_NEG1 && Axes[SelectedAxis].HardwareLimitNegIsActive)
+			MaxSpeed=Axes[SelectedAxis].MaxSpeed;
+			IACC=Axes[SelectedAxis].ACC;
+			IDEC=Axes[SelectedAxis].DEC;
 					
-					ACCSpeedINT =(long int)(100 *(float)MaxSpeed/(float)IACC);// t = V/a
-					ACCSpeedINT = MaxSpeed / ACCSpeedINT;
+			ACCSpeedINT =(long int)(100 *(float)MaxSpeed/(float)IACC);// t = V/a
+			ACCSpeedINT = MaxSpeed / ACCSpeedINT;
 					
-					DECSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IDEC);// t = V/a
-					DECSpeedINT= MaxSpeed / DECSpeedINT;
+			DECSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IDEC);// t = V/a
+			DECSpeedINT= MaxSpeed / DECSpeedINT;
 					
-					CLR_DIR1;
-					FreeJog=1;
-					Ma1=1000;
-					DistanceToGo1=0x7FFFFFFF;
-					break;
-					
-				}
-				case 2:
-				{
-					if(!LIM_NEG2 && Axes[1].HardwareLimitNegIsActive)
-					break;
-					MaxSpeed=Axes[1].MaxSpeed;
-					IACC=Axes[1].ACC;
-					IDEC=Axes[1].DEC;
-					
-					ACCSpeedINT =(long int)(100 *(float)MaxSpeed/(float)IACC);// t = V/a
-					ACCSpeedINT = MaxSpeed / ACCSpeedINT;
-					
-					DECSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IDEC);// t = V/a
-					DECSpeedINT= MaxSpeed / DECSpeedINT;
-					
-					CLR_DIR2;
-					FreeJog=2;
-					Ma2=1000;
-					DistanceToGo2=0x7FFFFFFF;
-					break;
-					
-				}
-				case 3:
-				{
-					if(!LIM_NEG3 && Axes[2].HardwareLimitNegIsActive)
-					break;
-					MaxSpeed=Axes[2].MaxSpeed;
-					IACC=Axes[2].ACC;
-					IDEC=Axes[2].DEC;
-					
-					ACCSpeedINT =(long int)(100 *(float)MaxSpeed/(float)IACC);// t = V/a
-					ACCSpeedINT = MaxSpeed / ACCSpeedINT;
-					
-					DECSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IDEC);// t = V/a
-					DECSpeedINT= MaxSpeed / DECSpeedINT;
-					
-					CLR_DIR3;
-					FreeJog=3;
-					Ma3=1000;
-					DistanceToGo3=0x7FFFFFFF;
-					break;
-				}
-			}
-			
+			CLR_DIR1;
+			FreeJog=1;
+			Ma[SelectedAxis] = 1000;
+			DistanceToGo [SelectedAxis] = 0x7FFFFFFF;
+
 			ACC=1;
 		}
 	}
@@ -231,14 +130,13 @@ ISR (PORTD_INT0_vect)
 
 //Port D interrupt
 //Start Stop Key Interrupt
-
 ISR (PORTD_INT1_vect)
 {
 	//printf("PortD INT1\r\n");
-	if(RunProgram)
+	if(RunProgramInput) //If Run Program Input pin is pressed
 	{
 		
-		//     because start is done in Raspberry then the part of code is disable here  
+		//     because start is done in Raspberry then the part of code is disable here
 		
 		//     //printf("Start Program...\r\n");
 		//     AxisMoving = AxisIsMoving1 || AxisIsMoving2 || AxisIsMoving3;
@@ -259,76 +157,50 @@ ISR (PORTD_INT1_vect)
 		//         IsPause=0;
 		//     }
 	}
-	if(StopProgram)
+	if(StopProgramInput) //Stop Program Input pin
 	{
-		if(ProgramRun)
+		if(ProgramRun) //if the program is in running mode
 		{
 			IsPause=1;
-			DistanceToGo1=0;
-			DistanceToGo2=0;
-			DistanceToGo3=0;
+			for (int ax = 0 ; ax < AxisNumber ; ax++)
+			{
+				DistanceToGo[ax] =0;
+			}
 			sprintf(BufferSend,"!4100\r\n");
 			Responsing=1;
 		}
 		
 		StopTime=0;
-		while(StopProgram)
+		while(StopProgramInput)
 		{
 			_delay_ms(100);
 			StopTime++;
 			if(StopTime>30)
 			{
+				DO1_CLR; //Pen UP
 
-
-				DO1_CLR;
-
-				AxisMoving = AxisIsMoving1 || AxisIsMoving2 || AxisIsMoving3;
-				while (AxisMoving == 1)
+				while (IsAnyAxisMoving() == 1);
+				long int Tempd = 0;
+				int Tempa = 0;
+				for (int ax = 0 ; ax < AxisNumber ; ax++)
 				{
-					AxisMoving = AxisIsMoving1 || AxisIsMoving2 || AxisIsMoving3;
+					if (SoftRefrence[ax] < AxisPosition[ax]) SetAxisDir(ax,0);
+					if (SoftRefrence[ax] >= AxisPosition[ax]) SetAxisDir(ax,1);
+					DistanceToGo[ax] = labs(AxisPosition[ax]-SoftRefrence[ax]);
+					if (Tempd < DistanceToGo[ax])
+					{
+						Tempd = DistanceToGo[ax];
+						Tempa = ax;
+					}
 				}
-				if(SoftRef1<AxisPosition1) CLR_DIR1;
-				if(SoftRef1>AxisPosition1) SET_DIR1;
-				
-				if(SoftRef2<AxisPosition2) CLR_DIR2;
-				if(SoftRef2>AxisPosition2) SET_DIR2;
-				
-				if(SoftRef3<AxisPosition3) CLR_DIR3;
-				if(SoftRef3>AxisPosition3) SET_DIR3;
-				
-				//printf("SoftRef1: %d\tSoftRef2: %d\tSoftRef3: %d\r\n",SoftRef1,SoftRef2,SoftRef3);
-				DistanceToGo1=labs(AxisPosition1-SoftRef1);
-				DistanceToGo2=labs(AxisPosition2-SoftRef2);
-				DistanceToGo3=labs(AxisPosition3-SoftRef3);
-				//printf("DistanceToGo1: %d\tDistanceToGo2: %d\tDistanceToGo3: %d\r\n",DistanceToGo1,DistanceToGo2,DistanceToGo3);
-				if(DistanceToGo1 > DistanceToGo2 && DistanceToGo1 > DistanceToGo3)
-				{
-					MaxSpeed = Axes[0].MaxSpeed;
-					IACC=Axes[0].ACC;
-					IDEC=Axes[0].DEC;
-					MaxDistanceToGo=labs(AxisPosition1-SoftRef1);
-				}
-				if(DistanceToGo2 > DistanceToGo1 && DistanceToGo2 > DistanceToGo3)
-				{
-					MaxSpeed = Axes[1].MaxSpeed;
-					IACC=Axes[1].ACC;
-					IDEC=Axes[1].DEC;
-					MaxDistanceToGo=labs(AxisPosition2-SoftRef2);
-				}
-				if(DistanceToGo3 > DistanceToGo1 && DistanceToGo3 > DistanceToGo2)
-				{
-					MaxSpeed = Axes[2].MaxSpeed;
-					IACC=Axes[2].ACC;
-					IDEC=Axes[2].DEC;
-					MaxDistanceToGo=labs(AxisPosition3-SoftRef3);
-				}
+				MaxSpeed = Axes[Tempa].MaxSpeed;
+				IACC=Axes[Tempa].ACC;
+				IDEC=Axes[Tempa].DEC;
+				MaxDistanceToGo=labs(AxisPosition[Tempa]-SoftRefrence[Tempa]);
 				//printf("MaxDTG: %d\r\n",MaxDistanceToGo);
-				if(MaxSpeed>0)
+				for (int ax = 0 ; ax < AxisNumber ; ax++)
 				{
-					Ma1=(unsigned int)((float)((float)DistanceToGo1/(float)MaxDistanceToGo)*1000);
-					Ma2=(unsigned int)((float)((float)DistanceToGo2/(float)MaxDistanceToGo)*1000);
-					Ma3=(unsigned int)((float)((float)DistanceToGo3/(float)MaxDistanceToGo)*1000);
-					//printf("MaxSpeed: %d\tMa1: %d\tMa2: %d\tMa3: %d\r\n",MaxSpeed,Ma1,Ma2,Ma3);
+					Ma[ax] = (unsigned int)((float)((float)DistanceToGo[ax]/(float)MaxDistanceToGo)*1000);
 				}
 				CurSpeedFrq=MaxSpeed;
 				ACC = 0;
@@ -337,9 +209,6 @@ ISR (PORTD_INT1_vect)
 				tcc0_init();
 				TCC0.CCA = (unsigned int)(TimerMainPeriod*1000);
 				ProgramRun=0;
-				//DistanceToGo1=0;
-				//DistanceToGo2=0;
-				//DistanceToGo3=0;
 			}
 		}
 	}
@@ -432,96 +301,94 @@ ISR (USARTC0_RXC_vect)
 
 int main(void)
 {
-    // Declare your local variables here
-    unsigned char n; 
+	// Declare your local variables here
+	unsigned char n;
 
-    // Interrupt system initialization
-    // Optimize for speed
-    //#pragma optsize-
-    // Make sure the interrupts are disabled
-    asm("cli");
-    // Low level interrupt: On
-    // Round-robin scheduling for low level interrupt: Off
-    // Medium level interrupt: On
-    // High level interrupt: On
-    // The interrupt vectors will be placed at the start of the Application FLASH section
-    n=(PMIC.CTRL & (~(PMIC_RREN_bm | PMIC_IVSEL_bm | PMIC_HILVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_LOLVLEN_bm))) |
-    PMIC_LOLVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm;
-    CCP=CCP_IOREG_gc;
-    PMIC.CTRL=n;
-    // Set the default priority for round-robin scheduling
-    PMIC.INTPRI=0x00;
+	// Interrupt system initialization
+	// Optimize for speed
+	//#pragma optsize-
+	// Make sure the interrupts are disabled
+	asm("cli");
+	// Low level interrupt: On
+	// Round-robin scheduling for low level interrupt: Off
+	// Medium level interrupt: On
+	// High level interrupt: On
+	// The interrupt vectors will be placed at the start of the Application FLASH section
+	n=(PMIC.CTRL & (~(PMIC_RREN_bm | PMIC_IVSEL_bm | PMIC_HILVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_LOLVLEN_bm))) |
+	PMIC_LOLVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm;
+	CCP=CCP_IOREG_gc;
+	PMIC.CTRL=n;
+	// Set the default priority for round-robin scheduling
+	PMIC.INTPRI=0x00;
 	
-    // Restore optimization for size if needed
-    //#pragma optsize_default
+	// Restore optimization for size if needed
+	//#pragma optsize_default
 
-    // System clocks initialization
-    system_clocks_init();
+	// System clocks initialization
+	system_clocks_init();
 
-    // Ports initialization
-    ports_init();
+	// Ports initialization
+	ports_init();
 
-    // Virtual Ports initialization
-    //vports_init();
-    spif_init();
+	// Virtual Ports initialization
+	//vports_init();
+	spif_init();
 
 
-    // Globally enable interrupts
-    asm("sei");
+	// Globally enable interrupts
+	asm("sei");
 
-    tcc0_init();  // Axis interpolation counter for level 0 
-    tcc1_init();  // Axis interpolation counter for level 1
-    tcd1_init();  // PLC interpolation timer
-    spie_init();  // SPI Flash initialization
-    SG17_SET;     // says to 7 segment board and says that Xmega is loaded 
-    usartc0_init();
-    SETSFRST; //set Serial Flash Reset means Xmega is able to read from SPI Flash 
-    SETSFWP;  //set Serial Flash Write protect to allow raspberry to write on it
-    _delay_ms(250);
-    printf("Reading Config...\r\n");
-    ReadConfig();  // read configuration from Serail Flash 
+	tcc0_init();  // Axis interpolation counter for level 0
+	tcc1_init();  // Axis interpolation counter for level 1
+	tcd1_init();  // PLC interpolation timer
+	spie_init();  // SPI Flash initialization
+	SG17_SET;     // says to 7 segment board and says that Xmega is loaded
+	usartc0_init();
+	SETSFRST; //set Serial Flash Reset means Xmega is able to read from SPI Flash
+	SETSFWP;  //set Serial Flash Write protect to allow raspberry to write on it
+	_delay_ms(250);
+	printf("Reading Config...\r\n");
+	ReadConfig();  // read configuration from Serail Flash
 
-    while (1)
-    {
-		// ifjog is pushed the LED on the board turns on
-	    if(JogNeg) SETBIT(PORTR.OUT,0);
-	    if(JogNeg==0) CLRBIT(PORTR.OUT,0);
-	    if(JogPos) SETBIT(PORTR.OUT,1);
-	    if(JogPos==0) CLRBIT(PORTR.OUT,1);
-	    
-	    AxisMoving = AxisIsMoving1 || AxisIsMoving2 || AxisIsMoving3; // is any axis is moving
+	while (1)
+	{
+		// if jog is pushed the LED on the board turns on
+		if(JogNegInput == 1) SETBIT(PORTR.OUT,0);
+		if(JogNegInput == 0) CLRBIT(PORTR.OUT,0);
+		if(JogPosInput == 1) SETBIT(PORTR.OUT,1);
+		if(JogPosInput == 0) CLRBIT(PORTR.OUT,1);
 		
-	    if(ProgramRun && !AxisMoving)
-	    {
-		    if(IsPause==0)
-		    {
-			    if(RunSubProgram)
-			    {
-				    printf("Read Sub Program.\r\n");
-				    ReadSubProgram(0);
-			    }
-			    else
-			    {
-				    printf("Read Main Program.\r\n");
-				    readRam();
-			    }
-			    printf("Program Block: %u\tMode: %u\r\n",CMDPRGlist.PRGLine,CMDPRGlist.Mode);
-			    
-				PORTR.OUTTGL=0x01; //program running will flash the LED 
-			    PRGExe();
-			    if(PRGEXEindex < PRGSize) PRGEXEindex++;
-		    }
-	    }
-	    /**********************************************/
-	    if(cmdIsReady==0) continue;
-	    for (j = 0 ; j < 21 ; j++)
-	    {
-		    cmdTemp[j] = EXECMD[j];
-		    EXECMD[j] = 0;
-	    }
-	    cmdExe();
-	    for (j=0;j<21;j++) cmdTemp[j] = 0;
-	    cmdIsReady=0;
-    }
+		if(ProgramRun && !IsAnyAxisMoving())
+		{
+			if(IsPause==0)
+			{
+				if(RunSubProgram)
+				{
+					printf("Read Sub Program.\r\n");
+					ReadSubProgram(0);
+				}
+				else
+				{
+					printf("Read Main Program.\r\n");
+					readRam();
+				}
+				printf("Program Block: %u\tMode: %u\r\n",CMDPRGlist.PRGLine,CMDPRGlist.Mode);
+				
+				PORTR.OUTTGL=0x01; //program running will flash the LED
+				PRGExe();
+				if(PRGEXEindex < PRGSize) PRGEXEindex++;
+			}
+		}
+		/**********************************************/
+		if(cmdIsReady==0) continue;
+		for (j = 0 ; j < 21 ; j++)
+		{
+			cmdTemp[j] = EXECMD[j];
+			EXECMD[j] = 0;
+		}
+		cmdExe();
+		for (j=0;j<21;j++) cmdTemp[j] = 0;
+		cmdIsReady=0;
+	}
 }
 

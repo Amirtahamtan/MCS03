@@ -5,8 +5,8 @@ int indexBS=0;
 char BufferReceive[100];
 char EXECMD[100];
 int indexBR=0;
-char Responsing=0;
-char cmdIsReady=0;
+char Responsing = 0;
+char cmdIsReady = 0;
 int h;
 
 // SPIF initialization
