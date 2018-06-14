@@ -53,14 +53,15 @@ ISR (PORTH_INT0_vect)
 			CurSpeedFrq=0;
 			TCC0.CCA=0xFFFF;
 			
-			ACCSpeedINT =(long int)(100 *(float)MaxSpeed/(float)IACC);// t = V/a
-			ACCSpeedINT = MaxSpeed / ACCSpeedINT;
-			
-			DECSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IDEC);// t = V/a
-			DECSpeedINT= MaxSpeed / DECSpeedINT;
+			//ACCSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IACC);// t = V/a
+			//ACCSpeedINT = MaxSpeed / ACCSpeedINT;
+			//
+			//DECSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IDEC);// t = V/a
+			//DECSpeedINT= MaxSpeed / DECSpeedINT;
 
 			if(!LIM_POS1 && Axes[SelectedAxis].HardwareLimitPosIsActive)
-			MaxSpeed=Axes[SelectedAxis].MaxSpeed;
+				MaxSpeed=Axes[SelectedAxis].MaxSpeed;
+				
 			IACC=Axes[SelectedAxis].ACC;
 			IDEC=Axes[SelectedAxis].DEC;
 					
@@ -71,14 +72,14 @@ ISR (PORTH_INT0_vect)
 			DECSpeedINT= MaxSpeed / DECSpeedINT;
 					
 			SET_DIR1;
-			FreeJog=1;
+			FreeJog=SelectedAxis;
 			Ma[SelectedAxis] = 1000;
 			DistanceToGo[SelectedAxis] = 0x7FFFFFFF;
 			
 			ACC=1;
 		}
 	}
-	else if((FreeJog == 1 && DIR1)||(FreeJog == 2 && DIR2)||(FreeJog == 3 && DIR3))
+	else if((FreeJog == 0 && DIR1)||(FreeJog == 1 && DIR2)||(FreeJog == 2 && DIR3))
 	{
 		ACC=0;
 		DEC=1;
@@ -96,14 +97,15 @@ ISR (PORTD_INT0_vect)
 			CurSpeedFrq=0;
 			TCC0.CCA=0xFFFF;
 			
-			ACCSpeedINT =(long int)(100 *(float)MaxSpeed/(float)IACC);// t = V/a
-			ACCSpeedINT = MaxSpeed / ACCSpeedINT;
-			
-			DECSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IDEC);// t = V/a
-			DECSpeedINT= MaxSpeed / DECSpeedINT;
+			//ACCSpeedINT =(long int)(100 *(float)MaxSpeed/(float)IACC);// t = V/a
+			//ACCSpeedINT = MaxSpeed / ACCSpeedINT;
+			//
+			//DECSpeedINT = (long int)(100 *(float)MaxSpeed/(float)IDEC);// t = V/a
+			//DECSpeedINT= MaxSpeed / DECSpeedINT;
 
 			if(!LIM_NEG1 && Axes[SelectedAxis].HardwareLimitNegIsActive)
-			MaxSpeed=Axes[SelectedAxis].MaxSpeed;
+				MaxSpeed=Axes[SelectedAxis].MaxSpeed;
+				
 			IACC=Axes[SelectedAxis].ACC;
 			IDEC=Axes[SelectedAxis].DEC;
 					
@@ -114,14 +116,14 @@ ISR (PORTD_INT0_vect)
 			DECSpeedINT= MaxSpeed / DECSpeedINT;
 					
 			CLR_DIR1;
-			FreeJog=1;
+			FreeJog=SelectedAxis;
 			Ma[SelectedAxis] = 1000;
 			DistanceToGo [SelectedAxis] = 0x7FFFFFFF;
 
 			ACC=1;
 		}
 	}
-	else if((FreeJog==1 && !DIR1)||(FreeJog==2 && !DIR2)||(FreeJog==3 && !DIR3))
+	else if((FreeJog==0 && !DIR1)||(FreeJog==1 && !DIR2)||(FreeJog==2 && !DIR3))
 	{
 		ACC=0;
 		DEC=1;

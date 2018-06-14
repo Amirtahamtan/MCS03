@@ -63,14 +63,14 @@ ISR (SPIF_INT_vect)
 			
 			cmdIsReady=1;
 			for(h=0;h<100;h++)
-			BufferReceive[h]=0;
+				BufferReceive[h]=0;
 			indexBR=0;
 		}
 	}
 	else
 	{
 		if(indexBS<100)
-		tx_data=BufferSend[indexBS];
+			tx_data=BufferSend[indexBS];
 		indexBS++;
 		if(indexBS==101)
 		{

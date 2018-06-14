@@ -424,7 +424,7 @@ void PRGExe()
 // run command that comes from raspberry the command will be in cmdtemp
 void cmdExe()
 {
-	int ax = cmdTemp[4] - 1;
+	int ax = cmdTemp[4] - 49; //Char - 48 = ASCII to decimal ,
 	if(strncmp(cmdTemp,"?0000",3)==0)
 	{
 		sprintf(BufferSend,"!0000\n\r");
@@ -485,6 +485,7 @@ void cmdExe()
 			}
 		}
 	}
+	
 	else if(strncmp(cmdTemp,"#02",3)==0)
 	{
 		if(cmdTemp[3]=='0')//Write Axis Outputs
@@ -746,7 +747,7 @@ void cmdExe()
 		if(cmdTemp[3]=='0')//Read Axis Position
 		{
 			ltoa(AxisPosition[ax],temp,10);
-			sprintf(BufferSend,"!090%d\t%s\r\n",ax,temp);
+			sprintf(BufferSend,"!090%d\t%s\r\n",ax+1,temp);
 			Responsing=1;
 			SetDataReady;
 		}
